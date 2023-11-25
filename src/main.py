@@ -7,7 +7,7 @@ import requests_cache
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL
+from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_DOC_URL
 from outputs import control_output
 from utils import find_tag, get_response
 
@@ -25,7 +25,7 @@ def whats_new(session):
     section_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'}
     )
-    results = [('Ссылка на статью', 'Заголовок', 'Редактор, автор')]
+    results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
 
     for section in tqdm(
         section_by_python, desc=f'Открываю ссылки для {whats_new_url}'
@@ -48,7 +48,7 @@ def whats_new(session):
     return results
 
 
-def latest_version(session):
+def latest_versions(session):
     response = get_response(session, MAIN_DOC_URL)
     if response is None:
         return
@@ -105,21 +105,9 @@ def download(session):
     logging.info(f'Архив был загружен и сохранен: {archive_path}')
 
 
-def peps(session):
+def pep(session):
     """Парсер PEP-документации."""
-    EXPECTED_STATUS = {
-        'A': ('Active', 'Accepted'),
-        'D': ('Deferred',),
-        'F': ('Final',),
-        'P': ('Provisional',),
-        'R': ('Rejected',),
-        'S': ('Superseded',),
-        'W': ('Withdrawn',),
-        '': ('Draft', 'Active'),
-    }
-
-    peps_url = 'https://peps.python.org/'
-    response = get_response(session, peps_url)
+    response = get_response(session, PEP_DOC_URL)
     if response is None:
         return
 
@@ -145,7 +133,7 @@ def peps(session):
         # Добываем ссылку определенного PEPа:
         a_tag = row.find('a')
         href = a_tag['href']
-        pep_link = urljoin(peps_url, href)
+        pep_link = urljoin(PEP_DOC_URL, href)
         response = get_response(session, pep_link)
         if response is None:
             return
@@ -179,9 +167,9 @@ def peps(session):
 
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
-    'latest-version': latest_version,
+    'latest-versions': latest_versions,
     'download': download,
-    'pep': peps,
+    'pep': pep,
 }
 
 
