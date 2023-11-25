@@ -11,13 +11,12 @@ def control_output(results, cli_args):
     """Контролер вывода результатов парсинга."""
     output = cli_args.output
 
-    match output:
-        case 'pretty':
-            pretty_output(results)
-        case 'file':
-            file_output(results, cli_args)
-        case _:
-            default_output(results)
+    if output == 'pretty':
+        pretty_output(results)
+    elif output == 'file':
+        file_output(results, cli_args)
+    else:
+        default_output(results)
 
 
 def pretty_output(results):
