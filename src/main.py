@@ -3,23 +3,19 @@ import re
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-import requests_cache
+from requests_cache import CachedResponse, CachedSession
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
 from constants import BASE_DIR, EXPECTED_STATUS, MAIN_DOC_URL, PEP_DOC_URL
 from outputs import control_output
-from utils import find_tag, get_response
+from utils import find_tag, get_response, get_soup
 
 
-def whats_new(session):
-    whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
+def whats_new(session: CachedResponse) -> list[tuple]:
+    whats_new_url: str = urljoin(MAIN_DOC_URL, 'whatsnew/')
     response = get_response(session, whats_new_url)
-
-    if response is None:
-        return
-
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = get_soup(response)
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     section_by_python = div_with_ul.find_all(
@@ -48,12 +44,9 @@ def whats_new(session):
     return results
 
 
-def latest_versions(session):
+def latest_versions(session: CachedResponse) -> list[tuple]:
     response = get_response(session, MAIN_DOC_URL)
-    if response is None:
-        return
-
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = get_soup(response)
     sidebar = find_tag(soup, 'div', attrs={'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
 
@@ -62,7 +55,7 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
     else:
-        raise Exception('Ничего не нашлось.')
+        raise ValueError('Необходимый список с версиями Python не найден.')
 
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
@@ -79,18 +72,17 @@ def latest_versions(session):
     return results
 
 
-def download(session):
+def download(session: CachedResponse) -> None:
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
     response = get_response(session, downloads_url)
-    if response is None:
-        return
+    soup = get_soup(response)
 
-    soup = BeautifulSoup(response.text, features='lxml')
     div_tag = find_tag(soup, 'div', attrs={'role': 'main'})
     table_tag = find_tag(div_tag, 'table', attrs={'class': 'docutils'})
     pdf_tag = find_tag(
         table_tag, 'a', attrs={'href': re.compile(r'.+pdf-a4\.zip$')}
     )
+
     pdf_link = pdf_tag['href']
     archive_url = urljoin(downloads_url, pdf_link)
     filename = archive_url.split('/')[-1]
@@ -105,13 +97,10 @@ def download(session):
     logging.info(f'Архив был загружен и сохранен: {archive_path}')
 
 
-def pep(session):
+def pep(session: CachedResponse) -> list[tuple]:
     """Парсер PEP-документации."""
     response = get_response(session, PEP_DOC_URL)
-    if response is None:
-        return
-
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = get_soup(response)
     main_tag = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
     table_tag = find_tag(
         main_tag,
@@ -136,7 +125,7 @@ def pep(session):
         pep_link = urljoin(PEP_DOC_URL, href)
         response = get_response(session, pep_link)
         if response is None:
-            return
+            continue
 
         # Добываем статус непосредственно из PEP:
         soup = BeautifulSoup(response.text, features='lxml')
@@ -174,7 +163,7 @@ MODE_TO_FUNCTION = {
 
 
 def main():
-    # Включение логирования парсера.
+    # Запуск логирования парсера.
     configure_logging()
     logging.info('Парсинг запущен!')
 
@@ -183,7 +172,7 @@ def main():
     args = arg_parser.parse_args()
 
     # Создаем кэширующуюся сессию.
-    session = requests_cache.CachedSession()
+    session = CachedSession()
     if args.clear_cache:
         session.cache.clear()
 

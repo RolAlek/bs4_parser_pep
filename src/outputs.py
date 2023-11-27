@@ -1,26 +1,27 @@
+from argparse import Namespace
 import csv
 import datetime as dt
 import logging
 
 from prettytable import PrettyTable
 
-from constants import BASE_DIR, DATETIME_FORMAT
+from constants import BASE_DIR, DATETIME_FORMAT, FILE, PRETTY
 
 
-def control_output(results, cli_args):
+def control_output(results: list[tuple], cli_args: Namespace) -> None:
     """Контролер вывода результатов парсинга."""
     output = cli_args.output
 
-    if output == 'pretty':
+    if output == PRETTY:
         pretty_output(results)
-    elif output == 'file':
+    elif output == FILE:
         file_output(results, cli_args)
     else:
         default_output(results)
 
 
-def pretty_output(results):
-    """Вывод данных в формате PrettyTable."""
+def pretty_output(results: list[tuple]) -> None:
+    """Вывод данных в терминал в формате PrettyTable."""
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
@@ -28,13 +29,13 @@ def pretty_output(results):
     print(table)
 
 
-def default_output(results):
+def default_output(results: list(tuple)) -> None:
     """Вывод данных в терминал, построчно."""
     for row in results:
         print(*row)
 
 
-def file_output(results, cli_args):
+def file_output(results: list[tuple], cli_args: Namespace) -> None:
     """Вывод данных в файл."""
     results_dir = BASE_DIR / 'results'
     results_dir.mkdir(exist_ok=True)
