@@ -29,7 +29,7 @@ def pretty_output(results: list[tuple]) -> None:
     print(table)
 
 
-def default_output(results: list(tuple)) -> None:
+def default_output(results: list[tuple]) -> None:
     """Вывод данных в терминал, построчно."""
     for row in results:
         print(*row)
